@@ -69,7 +69,7 @@ const Scheduler = struct {
         // Initialize the task queue
         self.task_queue.* = .{
             .mutex = .{},
-            .queue = {}, // Correctly initialize the DoublyLinkedList
+            .queue = .{},
             .cond = .{},
         };
 
@@ -84,19 +84,16 @@ const Scheduler = struct {
         self.allocator.destroy(self);
     }
     fn start(scheduler: *Scheduler) !void {
-    for (0..scheduler.min_threads) |_| {
-        const thread = try Thread.spawn(.{}, workerLoop, .{scheduler});
-        try scheduler.workers.append(thread);
-        scheduler.current_threads += 1;
+        for (0..scheduler.min_threads) |_| {
+            const thread = try Thread.spawn(.{}, workerLoop, .{scheduler});
+            try scheduler.workers.append(thread);
+            scheduler.current_threads += 1;
+        }
     }
-}
-
 };
 
-
-
 // worker theread
-// 
+//
 // Worker thread logic
 fn workerLoop(scheduler: *Scheduler) void {
     while (true) {
@@ -124,10 +121,8 @@ fn workerLoop(scheduler: *Scheduler) void {
 
 // Start initial worker threads
 
-
-
 // Step 3: Spawn Tasks and Use the Scheduler
-// 
+//
 // Example tasks
 fn exampleTask1() void {
     std.debug.print("Task 1 executed\n", .{});
