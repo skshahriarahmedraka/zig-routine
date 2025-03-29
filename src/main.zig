@@ -3,6 +3,8 @@ const Thread = std.Thread;
 const Mutex = Thread.Mutex;
 const Condition = Thread.Condition;
 const Allocator = std.mem.Allocator;
+const MatrixSize = 100;
+const Matrix = [MatrixSize][MatrixSize]f64;
 
 // Task type: Can be a function pointer or an async frame (for coroutines)
 const Task = struct {
@@ -125,13 +127,56 @@ fn workerLoop(scheduler: *Scheduler) void {
 //
 // Example tasks
 fn exampleTask1() void {
+    const a = try generateRandomMatrix();
+    const b = try generateRandomMatrix();
+    _ = matrixMultiply(a, b);
     std.debug.print("Task 1 executed\n", .{});
 }
 
 fn exampleTask2() void {
+    const a = try generateRandomMatrix();
+    const b = try generateRandomMatrix();
+    _ = matrixMultiply(a, b);
     std.debug.print("Task 2 executed\n", .{});
 }
 
+fn generateRandomMatrix() !Matrix {
+    var seed: u64 = @intCast(std.time.nanoTimestamp());
+    var matrix: Matrix = undefined;
+
+    for (0..MatrixSize) |i| {
+        for (0..MatrixSize) |j| {
+            const result = @mulWithOverflow(seed, 6364136223846793005);
+            seed = result[0] + 1; // Use the result of the multiplication
+            matrix[i][j] = @as(f64, @floatFromInt(seed & 0xFFFFFFFF)) / @as(f64, 0xFFFFFFFF) * 10.0; // Random float [0, 10)
+        }
+    }
+    return matrix;
+}
+
+fn matrixMultiply(a: Matrix, b: Matrix) Matrix {
+    const start_time = std.time.microTimestamp();
+    var result: Matrix = undefined;
+    for (0..MatrixSize) |i| {
+        for (0..MatrixSize) |j| {
+            var sum: f64 = 0.0;
+            for (0..MatrixSize) |k| {
+                sum += a[i][k] * b[k][j];
+            }
+            result[i][j] = sum;
+        }
+    }
+    const end_time = std.time.microTimestamp();
+    const elapsed = end_time - start_time;
+
+    const minutes = @divFloor( elapsed , (60 * 1_000_000_000));
+    const seconds = @divFloor( @rem(elapsed , (60 * 1_000_000_000)) , 1_000_000_000);
+    const microseconds = @divFloor(@rem(elapsed , 1_000_000_000) , 1_000);
+    const nanoseconds = @rem(elapsed , 1_000);
+
+    std.debug.print("Time taken: {} min {} sec {} µs {} ns\n", .{ minutes, seconds, microseconds, nanoseconds });
+    return result;
+}
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
